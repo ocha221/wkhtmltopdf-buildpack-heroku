@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+cat <<EOF
+---
+config_vars:
+  PATH: \$HOME/bin:\$HOME/vendor/wkhtmltopdf:\$PATH
+  LD_LIBRARY_PATH: \$HOME/vendor/wkhtmltopdf/lib:\$LD_LIBRARY_PATH
+EOF
