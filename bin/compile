@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+
+set -e
+set -x
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
+
+
+ARCH=$(uname -m)
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+echo "       Architecture: $ARCH"
+echo "       OS: $OS"
+
+VENDOR_DIR="$BUILD_DIR/vendor/wkhtmltopdf"
+mkdir -p "$VENDOR_DIR"
+
+# https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb
+# wkhtmltopdf version
+VERSION="0.12.6.1-2"
+UBUNTU_REL="jammy"
+if [ "$ARCH" = "x86_64" ]; then
+    # AMD64 / x86_64
+    DOWNLOAD_URL="https://github.com/wkhtmltopdf/packaging/releases/download/${VERSION}/wkhtmltox_${VERSION}.${UBUNTU_REL}_amd64.deb"
+    echo "       Using AMD64 binary ($UBUNTU_REL/Ubuntu)"
+elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+    # ARM64
+    DOWNLOAD_URL="https://github.com/wkhtmltopdf/packaging/releases/download/${VERSION}/wkhtmltox_${VERSION}.${UBUNTU_REL}_arm64.deb"
+    echo "       Using ARM64 binary ($UBUNTU_REL/Ubuntu)"
+else
+    echo "       ERROR: Unsupported architecture: $ARCH"
+    exit 1
+fi
+
+TEMP_DIR=$(mktemp -d)
+DEB_FILE="$TEMP_DIR/wkhtmltox.deb"
+curl -sL "$DOWNLOAD_URL" -o "$DEB_FILE"
+
+echo "Extracting wkhtmltopdf..."
+dpkg-deb -x "$DEB_FILE" "$TEMP_DIR"
+
+cp "$TEMP_DIR/usr/local/bin/wkhtmltopdf" "$VENDOR_DIR/"
+cp "$TEMP_DIR/usr/local/bin/wkhtmltoimage" "$VENDOR_DIR/" 2>/dev/null || true
+
+if [ -d "$TEMP_DIR/usr/local/lib" ]; then
+    mkdir -p "$VENDOR_DIR/lib"
+    cp -r "$TEMP_DIR/usr/local/lib/"* "$VENDOR_DIR/lib/" 2>/dev/null || true
+fi
+
+rm -rf "$TEMP_DIR"
+
+chmod +x "$VENDOR_DIR/wkhtmltopdf"
+chmod +x "$VENDOR_DIR/wkhtmltoimage" 2>/dev/null || true
+
+mkdir -p "$BUILD_DIR/bin"
+ln -sf "../vendor/wkhtmltopdf/wkhtmltopdf" "$BUILD_DIR/bin/wkhtmltopdf"
+
+echo "Binary location: \$HOME/vendor/wkhtmltopdf/wkhtmltopdf"
+echo "Symlink: \$HOME/bin/wkhtmltopdf"
+
+"$VENDOR_DIR/wkhtmltopdf" --version || echo "could not verify installation"
+
+exit 0
