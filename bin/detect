@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo "wkhtmltopdf" #always want it available
+exit 0
